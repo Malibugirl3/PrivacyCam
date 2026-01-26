@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../domain/models/protect_result.dart';
 import '../../domain/services/image_protect_service.dart';
-
+import '../../domain/models/evalution_result.dart';
 /// Cloud Protect Implementation / 云端保护实现
 ///
 /// 通过 HTTP API 调用云端算法服务。
@@ -56,6 +56,7 @@ class CloudProtectImpl implements ImageProtectService {
     required double protectionLevel,
   }) async {
     final stopwatch = Stopwatch()..start();
+    String? taskId;
 
     try {
       // 1. 准备上传文件
@@ -83,27 +84,35 @@ class CloudProtectImpl implements ImageProtectService {
         // 假设返回 Base64 编码的图片
         // 具体格式需要根据算法组 API 调整
         final String? base64Image = data['protected_image'];
+        taskId = data['task_id'];
         
         if (base64Image != null) {
-          final outputPath = await _saveBase64Image(base64Image);
+
+          String pureBase64 = base64Image;
+          if(base64Image.contains(',')) {
+            pureBase64 = base64Image.split(',').last;
+          }
+
+          final outputPath = await _saveBase64Image(pureBase64);
           stopwatch.stop();
           
           return ProtectResult.success(
             imagePath: outputPath,
             processingTimeMs: stopwatch.elapsedMilliseconds,
             protectionLevel: protectionLevel,
+            taskId: taskId,
           );
         }
       }
 
       stopwatch.stop();
-      return ProtectResult.failure('服务器返回异常');
+      return ProtectResult.failure('服务器返回异常', taskId: taskId);
     } on DioException catch (e) {
       stopwatch.stop();
-      return ProtectResult.failure('网络错误: ${e.message}');
+      return ProtectResult.failure('网络错误: ${e.message}', taskId: taskId);
     } catch (e) {
       stopwatch.stop();
-      return ProtectResult.failure('处理失败: $e');
+      return ProtectResult.failure('处理失败: $e', taskId: taskId);
     }
   }
 
@@ -116,5 +125,22 @@ class CloudProtectImpl implements ImageProtectService {
 
     await File(outputPath).writeAsBytes(bytes);
     return outputPath;
+  }
+
+  Future<EvaluationResult?> getEvaluationResult(String taskId) async {
+    try {
+      final response = await _dio.get('/api/v1/result/$taskId');
+      
+      if (response.statusCode == 200) {
+        return EvaluationResult.fromJson(response.data);
+      }
+      return null;
+    } on DioException catch (e) {
+      // 404 表示任务不存在
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
   }
 }

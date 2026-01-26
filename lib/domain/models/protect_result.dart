@@ -19,12 +19,16 @@ class ProtectResult {
   /// 使用的保护强度
   final double protectionLevel;
 
+  /// 任务 ID
+  final String? taskId;
+
   const ProtectResult({
     required this.success,
     this.protectedImagePath,
     this.errorMessage,
     this.processingTimeMs = 0,
     this.protectionLevel = 0,
+    this.taskId,
   });
 
   /// 创建成功结果
@@ -32,20 +36,23 @@ class ProtectResult {
     required String imagePath,
     required int processingTimeMs,
     required double protectionLevel,
+    String? taskId,
   }) {
     return ProtectResult(
       success: true,
       protectedImagePath: imagePath,
       processingTimeMs: processingTimeMs,
       protectionLevel: protectionLevel,
+      taskId: taskId,
     );
   }
 
   /// 创建失败结果
-  factory ProtectResult.failure(String error) {
+  factory ProtectResult.failure(String error, {String? taskId}) {
     return ProtectResult(
       success: false,
       errorMessage: error,
+      taskId: taskId,
     );
   }
 }

@@ -125,7 +125,8 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),  // 添加动画
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: _getLevelColor().withOpacity(0.2),
@@ -146,31 +147,37 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
         const SizedBox(height: 8),
         
         // 滑动条
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: _getLevelColor(),
-            inactiveTrackColor: _getLevelColor().withOpacity(0.2),
-            thumbColor: _getLevelColor(),
-            overlayColor: _getLevelColor().withOpacity(0.1),
-            trackHeight: 8,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+        TweenAnimationBuilder<Color?>(
+          tween: ColorTween(
+            begin: _getLevelColor(),
+            end: _getLevelColor(),
           ),
-          child: Slider(
-            value: _protectionLevel,
-            min: 0,
-            max: 100,
-            // divisions: 100,
-            onChanged: (value) {
-              // 每滑动 5 个单位触发一次反馈
-              if ((value - _protectionLevel).abs() >= 5) {
-                HapticFeedback.selectionClick();  // 震动
-                // _playTickSound();  // 音效
-              }
-              setState(() {
-                _protectionLevel = value;
-              });
-            },
-          ),
+          duration: const Duration(milliseconds: 200),
+          builder: (context, color, child) {
+            return SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: color,
+                inactiveTrackColor: color?.withOpacity(0.2),
+                thumbColor: color,
+                overlayColor: color?.withOpacity(0.1),
+                trackHeight: 8,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+              ),
+              child: Slider(
+                value: _protectionLevel,
+                min: 0,
+                max: 100,
+                onChanged: (value) {
+                  if ((value - _protectionLevel).abs() >= 5) {
+                    HapticFeedback.selectionClick();
+                  }
+                  setState(() {
+                    _protectionLevel = value;
+                  });
+                },
+              ),
+            );
+          },
         ),
         
         // 刻度标签
@@ -186,10 +193,14 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
         const SizedBox(height: 8),
         
         // 描述文字
-        Text(
-          _getLevelDescription(),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Text(
+            _getLevelDescription(),
+            key: ValueKey(_getLevelDescription()),  // 重要：让 Flutter 知道内容变了
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
         ),
       ],
@@ -296,11 +307,11 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
       preferCloud: settings.useCloud,
     );
 
+    if (!mounted) return;
+
     setState(() {
       _isProcessing = false;
     });
-
-    if (!mounted) return;
 
     if (result.success) {
       // 成功 - 跳转到结果页
@@ -311,6 +322,7 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
             originalPath: widget.imagePath,
             protectedPath: result.protectedImagePath!,
             protectionLevel: _protectionLevel,
+            taskId: result.taskId,
           ),
         ),
       );
