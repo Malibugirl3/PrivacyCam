@@ -25,22 +25,31 @@ class EvaluationMetric {
   double get normalizedValue {
     switch (key) {
       case 'psnr':
-        // PSNR: 20-50 映射到 0-1
+        // PSNR: 20-50 映射到 0-1，越高图像质量越好
         return ((numericValue - 20) / 30).clamp(0.0, 1.0);
+      
       case 'ssim':
       case 'msssim':
       case 'clip_similarity':
-        // 已经是 0-1 范围
+        // 0-1，越高越相似（图像质量好）
         return numericValue.clamp(0.0, 1.0);
+      
       case 'ai_perturb_score':
-        // 0-1，越高越好
+        // 0-1，越高对 AI 干扰越强
         return numericValue.clamp(0.0, 1.0);
+      
       case 'clip_distance':
+        // 范围 [0, 2]，直接除以 2 归一化，不反转
+        // 值小 = 保护弱（红色），值大 = 保护强（绿色）
+        return (numericValue / 2.0).clamp(0.0, 1.0);
+      
       case 'mean_abs_diff':
       case 'l2_diff':
       case 'linf_diff':
-        // 这些是"越小越好"，需要反转
-        return (1.0 - numericValue).clamp(0.0, 1.0);
+        // 直接显示，不反转
+        // 假设范围 0-1，如果超出会被 clamp
+        return numericValue.clamp(0.0, 1.0);
+      
       default:
         return numericValue.clamp(0.0, 1.0);
     }

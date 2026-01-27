@@ -323,6 +323,7 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
             protectedPath: result.protectedImagePath!,
             protectionLevel: _protectionLevel,
             taskId: result.taskId,
+            serverUrl: settings.serverUrl,
           ),
         ),
       );

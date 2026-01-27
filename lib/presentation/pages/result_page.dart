@@ -15,6 +15,7 @@ class ResultPage extends StatefulWidget {
   final String protectedPath;
   final double protectionLevel;
   final String? taskId;
+  final String serverUrl;
 
   const ResultPage({
     super.key,
@@ -22,6 +23,7 @@ class ResultPage extends StatefulWidget {
     required this.protectedPath,
     required this.protectionLevel,
     this.taskId,
+    required this.serverUrl,
   });
 
   @override
@@ -70,7 +72,7 @@ class _ResultPageState extends State<ResultPage> {
               // 评估面板（新增）
               EvaluationPanel(
                 taskId: widget.taskId,
-                baseUrl: AppConstants.baseUrl,
+                baseUrl: widget.serverUrl,
               ),
 
               const SizedBox(height: 8),

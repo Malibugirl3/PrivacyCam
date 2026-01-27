@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';  // 为了使用 debugPrint
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -72,30 +72,28 @@ class CloudProtectImpl implements ImageProtectService {
       });
 
       // 2. 发送请求
-      final response = await _dio.post(
-        '/api/v1/protect',  // 待算法组确认
-        data: formData,
+      final response = await _retry(
+        action: () => _dio.post(
+          '/api/v1/protect',
+          data: formData,
+        ),
+        maxRetries: 3,
+        delay: const Duration(seconds: 2),
       );
 
       // 3. 处理响应
       if (response.statusCode == 200) {
         final data = response.data;
         
-        // 假设返回 Base64 编码的图片
-        // 具体格式需要根据算法组 API 调整
-        final String? base64Image = data['protected_image'];
+        
+        // image_url
+        final String? imageUrl = data['image_url'];
         taskId = data['task_id'];
         
-        if (base64Image != null) {
-
-          String pureBase64 = base64Image;
-          if(base64Image.contains(',')) {
-            pureBase64 = base64Image.split(',').last;
-          }
-
-          final outputPath = await _saveBase64Image(pureBase64);
+        if(imageUrl != null) {
+          final outputPath = await _downloadImage(imageUrl);
           stopwatch.stop();
-          
+
           return ProtectResult.success(
             imagePath: outputPath,
             processingTimeMs: stopwatch.elapsedMilliseconds,
@@ -109,23 +107,93 @@ class CloudProtectImpl implements ImageProtectService {
       return ProtectResult.failure('服务器返回异常', taskId: taskId);
     } on DioException catch (e) {
       stopwatch.stop();
-      return ProtectResult.failure('网络错误: ${e.message}', taskId: taskId);
+      
+      // 根据错误类型提供更详细的信息
+      String errorMsg;
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+          errorMsg = '连接超时，请检查网络';
+          break;
+        case DioExceptionType.sendTimeout:
+          errorMsg = '发送超时，图片可能太大';
+          break;
+        case DioExceptionType.receiveTimeout:
+          errorMsg = '接收超时，服务器处理中';
+          break;
+        case DioExceptionType.connectionError:
+          errorMsg = '无法连接服务器';
+          break;
+        case DioExceptionType.badResponse:
+          errorMsg = '服务器错误: ${e.response?.statusCode}';
+          break;
+        default:
+          // 打印详细调试信息
+          debugPrint('DioException type: ${e.type}');
+          debugPrint('DioException error: ${e.error}');
+          debugPrint('DioException message: ${e.message}');
+          errorMsg = '网络错误 (${e.type.name}): ${e.error ?? e.message ?? "未知"}';
+      }
+      
+      return ProtectResult.failure(errorMsg, taskId: taskId);
     } catch (e) {
       stopwatch.stop();
       return ProtectResult.failure('处理失败: $e', taskId: taskId);
     }
   }
 
-    /// 保存 Base64 图片到本地
-  Future<String> _saveBase64Image(String base64String) async {
-    final bytes = base64Decode(base64String);
+  /// 保存 Base64 图片到本地 旧版，已弃用
+  // Future<String> _saveBase64Image(String base64String) async {
+  //   final bytes = base64Decode(base64String);
+  //   final tempDir = await getTemporaryDirectory();
+  //   final timestamp = DateTime.now().millisecondsSinceEpoch;
+  //   final outputPath = '${tempDir.path}/cloud_protected_$timestamp.png';
+
+  //   await File(outputPath).writeAsBytes(bytes);
+  //   return outputPath;
+  // }
+
+  /// 带重试的异步操作
+  Future<T> _retry<T>({
+    required Future<T> Function() action,
+    int maxRetries = 3,
+    Duration delay = const Duration(seconds: 1),
+  }) async {
+    for (int i = 0; i < maxRetries; i++) {
+      try {
+        return await action();
+      } catch (e) {
+        debugPrint('操作失败，第 ${i + 1}/${maxRetries} 次: $e');
+        if (i == maxRetries - 1) rethrow;  // 最后一次失败，抛出异常
+        await Future.delayed(delay * (i + 1));  // 递增延迟
+      }
+    }
+    throw Exception('重试失败');
+  }
+
+  /// 从服务器下载图片到本地
+  Future<String> _downloadImage(String imageUrl) async {
     final tempDir = await getTemporaryDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final outputPath = '${tempDir.path}/cloud_protected_$timestamp.jpg';
-
-    await File(outputPath).writeAsBytes(bytes);
+    
+    // 带重试的下载
+    await _retry(
+      action: () async {
+        final response = await _dio.get<List<int>>(
+          imageUrl,
+          options: Options(
+            responseType: ResponseType.bytes,
+          ),
+        );
+        await File(outputPath).writeAsBytes(response.data!);
+      },
+      maxRetries: 3,
+      delay: const Duration(seconds: 1),
+    );
+    
     return outputPath;
   }
+    
 
   Future<EvaluationResult?> getEvaluationResult(String taskId) async {
     try {
