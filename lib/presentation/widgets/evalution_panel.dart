@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/models/evalution_result.dart';
-import '../../infrastructure/cloud/cloud_protect_impl.dart';
+import '../../infrastructure/demo/demo_protect_impl.dart';
 import 'metric_card.dart';
 
 class EvaluationPanel extends StatefulWidget {
@@ -26,7 +26,7 @@ class _EvaluationPanelState extends State<EvaluationPanel> {
   
   // 轮询
   Timer? _pollingTimer;
-  late final CloudProtectImpl _api;
+  late final DemoProtectImpl _api;
   
   // 分组折叠状态
   final Map<String, bool> _groupExpanded = {
@@ -38,7 +38,7 @@ class _EvaluationPanelState extends State<EvaluationPanel> {
   @override
   void initState() {
     super.initState();
-    _api = CloudProtectImpl(baseUrl: widget.baseUrl);
+    _api = DemoProtectImpl();
     if (widget.taskId != null) {
       _startPolling();
     } else {

@@ -7,13 +7,12 @@ import 'package:flutter/material.dart';   /// 导入 Flutter 材料组件库, �
 import 'package:flutter/services.dart';   /// 用于 HapticFeedback
 import 'package:audioplayers/audioplayers.dart';  /// 用于播放音频
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/settings_provider.dart';
 
 import 'result_page.dart';
 
-/// 导入保护结果模型和本地保护实现
+/// 导入保护结果模型和 Demo 保护实现
 import '../../application/protect_manager.dart';
-import '../../infrastructure/cloud/cloud_protect_impl.dart';
+import '../../infrastructure/demo/demo_protect_impl.dart';
 
 /// Preview Page / 预览页面
 /// 
@@ -291,20 +290,14 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
       _isProcessing = true;
     });
 
-    /// 从 Provider 读取设置, 动态设置保护管理器
-    final settings = ref.read(settingsProvider);
-
-    if(settings.useCloud) {
-      _protectManager.setCloudService(
-        CloudProtectImpl(baseUrl: settings.serverUrl),
-      );
-    }
+    // Demo 模式：始终使用 DemoProtectImpl
+    _protectManager.setCloudService(DemoProtectImpl());
 
     // 调用保护服务
     final result = await _protectManager.protect(
       imagePath: widget.imagePath,
       protectionLevel: _protectionLevel,
-      preferCloud: settings.useCloud,
+      preferCloud: true,  // Demo 模式使用云端服务（实际是 Demo 实现）
     );
 
     if (!mounted) return;
