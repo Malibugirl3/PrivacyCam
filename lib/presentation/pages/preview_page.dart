@@ -1,132 +1,226 @@
+import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';   /// 导入 Flutter 材料组件库, 实现 Material Design 风格，以及以下几种功能
-                                          /// 1. 状态管理: 使用 StatefulWidget 管理页面状态
-                                          /// 2. 图片显示: 使用 Image.file 显示用户选择的图片
-                                          /// 3. 保护等级选择: 使用三个按钮提供低/中/高三个保护等级选择
-                                          /// 4. 开始保护: 使用按钮触发保护过程
-import 'package:flutter/services.dart';   /// 用于 HapticFeedback
-import 'package:audioplayers/audioplayers.dart';  /// 用于播放音频
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/settings_provider.dart';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../application/protect_manager.dart';
+import '../../domain/models/portrait_risk_result.dart';
+import '../../infrastructure/cloud/cloud_protect_impl.dart';
+import '../../infrastructure/local/local_portrait_risk_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../providers/settings_provider.dart';
 import 'result_page.dart';
 
-/// 导入保护结果模型和本地保护实现
-import '../../application/protect_manager.dart';
-import '../../infrastructure/cloud/cloud_protect_impl.dart';
-
-/// Preview Page / 预览页面
-/// 
-/// 显示用户选择的图片，并提供保护等级选择。
-/// Display the selected image and provide protection level options.
-
 class PreviewPage extends ConsumerStatefulWidget {
-  final String imagePath;
-
   const PreviewPage({super.key, required this.imagePath});
+
+  final String imagePath;
 
   @override
   ConsumerState<PreviewPage> createState() => _PreviewPageState();
-
 }
 
 class _PreviewPageState extends ConsumerState<PreviewPage> {
-  /// 保护强度：0-100
-  double _protectionLevel = 50;  // 默认 50%
+  late final ProtectManager _protectManager;
+  late final LocalPortraitRiskService _portraitRiskService;
 
-  /// 是否正在处理
+  double _protectionLevel = 50;
   bool _isProcessing = false;
 
-  /// 音频播放器
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  /// 初始化音频播放器
-  @override
-  void dispose() {
-    _audioPlayer.dispose();  // 释放资源
-    super.dispose();
-  }
-  
-    /// 播放滑动音效
-  Future<void> _playTickSound() async {
-    await _audioPlayer.play(AssetSource('sounds/tick.mp3'), volume: 0.3);
-  }
-
-  /// 保护服务实例
-  late final ProtectManager _protectManager;
+  bool _isRiskLoading = true;
+  String? _riskError;
+  PortraitRiskResult? _riskResult;
 
   @override
   void initState() {
     super.initState();
     _protectManager = ProtectManager();
-    
-    // // 注入云端服务（使用你的电脑 IP）
-    // _protectManager.setCloudService(
-    //   // CloudProtectImpl(baseUrl: 'http://10.138.58.77:5000'),
-    // );
-    /// 从 Provider 读取设置, 改到 _startProtection() 中动态设置
+    _portraitRiskService = LocalPortraitRiskService();
+    _runPortraitRiskScan();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_portraitRiskService.dispose());
+    super.dispose();
+  }
+
+  Future<void> _runPortraitRiskScan() async {
+    setState(() {
+      _isRiskLoading = true;
+      _riskError = null;
+    });
+
+    try {
+      final result = await _portraitRiskService.analyze(widget.imagePath);
+      if (!mounted) return;
+      setState(() {
+        _riskResult = result;
+        _isRiskLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _riskError = AppLocalizations.of(context).faceScanFailed(e.toString());
+        _isRiskLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('图片预览'),
+        title: Text(AppLocalizations.of(context).previewTitle),
         centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // 图片预览区域
-              Expanded(
-                flex: 3,
-                child: _buildImagePreview(),
-              ),
-
+              Expanded(flex: 3, child: _buildImagePreview()),
               const SizedBox(height: 16),
-
-              // 保护等级选择
+              _buildPortraitRiskCard(),
+              const SizedBox(height: 16),
               _buildProtectionSelector(),
-
-              const SizedBox(height: 24),
-
-              // 开始保护按钮
+              const SizedBox(height: 20),
               _buildProtectButton(),
-
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
             ],
-          ),  /// 返回 Column 组件，包含图片预览区域、保护等级选择、开始保护按钮
-        ),  /// 返回 Padding 组件，包含 Column 组件，包含图片预览区域、保护等级选择、开始保护按钮
-      ),  /// 返回 SafeArea 组件，包含 Padding 组件，包含 Column 组件，包含图片预览区域、保护等级选择、开始保护按钮
-    ); /// 返回 Scaffold 组件，包含 AppBar 和 Body 内容
+          ),
+        ),
+      ),
+    );
   }
 
+  Widget _buildImagePreview() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.file(File(widget.imagePath), fit: BoxFit.contain),
+      ),
+    );
+  }
 
-  /// 构建保护强度选择器（滑动条）
-  /// Build the protection strength selector (slider)
-  /// 
-  /// 构建保护强度选择器（滑动条），包含标题、当前值、滑动条、刻度标签、描述文字。
-  /// Build the protection strength selector (slider), including title, current value, slider, scale labels, and description text.
-  /// 
-  /// 参数：[context] 上下文
-  Widget _buildProtectionSelector() {
+  Widget _buildPortraitRiskCard() {
+    final t = AppLocalizations.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: _isRiskLoading
+          ? Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 10),
+                Expanded(child: Text(t.scanningPortraitRisk)),
+              ],
+            )
+          : _riskError != null
+              ? Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(_riskError!)),
+                    IconButton(
+                      tooltip: t.retry,
+                      onPressed: _runPortraitRiskScan,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                )
+              : _buildRiskContent(),
+    );
+  }
+
+  Widget _buildRiskContent() {
+    final t = AppLocalizations.of(context);
+    final risk = _riskResult;
+    if (risk == null) return Text(t.noRiskResult);
+
+    final color = _riskColor(risk.level);
+    final label = _riskLabel(risk.level);
+    final recommendationText = switch (risk.level) {
+      PortraitRiskLevel.low => t.recommendationLow,
+      PortraitRiskLevel.medium => t.recommendationMedium,
+      PortraitRiskLevel.high => t.recommendationHigh,
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题和当前值
+        Row(
+          children: [
+            Icon(Icons.face_retouching_natural, color: color),
+            const SizedBox(width: 8),
+            Text(
+              t.portraitRiskTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            Text(
+              '$label - ${risk.score}',
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          risk.faceCount == 0
+              ? t.noClearFaceSummary
+              : t.detectedFacesSummary(risk.faceCount),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          t.facesDetected(risk.faceCount),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          t.recommendationPrefix(recommendationText),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProtectionSelector() {
+    final t = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '保护强度',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              t.protectionStrength,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),  // 添加动画
+              duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: _getLevelColor().withOpacity(0.2),
@@ -143,98 +237,40 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
             ),
           ],
         ),
-        
         const SizedBox(height: 8),
-        
-        // 滑动条
-        TweenAnimationBuilder<Color?>(
-          tween: ColorTween(
-            begin: _getLevelColor(),
-            end: _getLevelColor(),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: _getLevelColor(),
+            inactiveTrackColor: _getLevelColor().withOpacity(0.2),
+            thumbColor: _getLevelColor(),
+            overlayColor: _getLevelColor().withOpacity(0.1),
+            trackHeight: 8,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
           ),
-          duration: const Duration(milliseconds: 200),
-          builder: (context, color, child) {
-            return SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: color,
-                inactiveTrackColor: color?.withOpacity(0.2),
-                thumbColor: color,
-                overlayColor: color?.withOpacity(0.1),
-                trackHeight: 8,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
-              ),
-              child: Slider(
-                value: _protectionLevel,
-                min: 0,
-                max: 100,
-                onChanged: (value) {
-                  if ((value - _protectionLevel).abs() >= 5) {
-                    HapticFeedback.selectionClick();
-                  }
-                  setState(() {
-                    _protectionLevel = value;
-                  });
-                },
-              ),
-            );
-          },
-        ),
-        
-        // 刻度标签
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('0%', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            Text('50%', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            Text('100%', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-          ],
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // 描述文字
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: Text(
-            _getLevelDescription(),
-            key: ValueKey(_getLevelDescription()),  // 重要：让 Flutter 知道内容变了
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
+          child: Slider(
+            value: _protectionLevel,
+            min: 0,
+            max: 100,
+            onChanged: (value) {
+              if ((value - _protectionLevel).abs() >= 5) {
+                HapticFeedback.selectionClick();
+              }
+              setState(() {
+                _protectionLevel = value;
+              });
+            },
           ),
+        ),
+        Text(
+          _getLevelDescription(),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Theme.of(context).hintColor),
         ),
       ],
     );
   }
 
-  /// 根据强度获取颜色
-  Color _getLevelColor() {
-    if (_protectionLevel < 30) {
-      return Colors.green;
-    } else if (_protectionLevel < 70) {
-      return Colors.orange;
-    } else {
-      return Colors.red;
-    }
-  }
-
-
-  /// 获取等级说明文字
-  String _getLevelDescription() {
-    if (_protectionLevel == 0) {
-      return '无保护，原图效果';
-    } else if (_protectionLevel < 30) {
-      return '轻微扰动，几乎不影响画质，基础防护';
-    } else if (_protectionLevel < 70) {
-      return '中等扰动，平衡画质与防护效果';
-    } else if (_protectionLevel < 100) {
-      return '强力扰动，高防护，可能轻微影响画质';
-    } else {
-      return '最强保护，最高防护等级';
-    }
-  }
-
-    /// 构建开始保护按钮
   Widget _buildProtectButton() {
     return SizedBox(
       width: double.infinity,
@@ -247,60 +283,28 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
             ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text(
-                '开始保护',
-                style: TextStyle(fontSize: 18),
+            : Text(
+                AppLocalizations.of(context).startProtection,
+                style: const TextStyle(fontSize: 18),
               ),
       ),
     );
   }
 
-  /// 构建图片预览区域
-  Widget _buildImagePreview() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.file(
-          File(widget.imagePath),
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-
-
-  /// 开始保护处理
   Future<void> _startProtection() async {
     setState(() {
       _isProcessing = true;
     });
 
-    /// 从 Provider 读取设置, 动态设置保护管理器
     final settings = ref.read(settingsProvider);
-
-    if(settings.useCloud) {
+    if (settings.useCloud) {
       _protectManager.setCloudService(
         CloudProtectImpl(baseUrl: settings.serverUrl),
       );
     }
 
-    // 调用保护服务
     final result = await _protectManager.protect(
       imagePath: widget.imagePath,
       protectionLevel: _protectionLevel,
@@ -314,7 +318,6 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
     });
 
     if (result.success) {
-      // 成功 - 跳转到结果页
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -328,14 +331,53 @@ class _PreviewPageState extends ConsumerState<PreviewPage> {
         ),
       );
     } else {
-      // 失败 - 显示错误
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.errorMessage ?? '处理失败'),
+          content: Text(
+            result.errorMessage ?? AppLocalizations.of(context).processingFailed,
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Color _getLevelColor() {
+    if (_protectionLevel < 30) return Colors.green;
+    if (_protectionLevel < 70) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _getLevelDescription() {
+    final t = AppLocalizations.of(context);
+    if (_protectionLevel == 0) return t.protectionLevelDescriptionNone;
+    if (_protectionLevel < 30) return t.protectionLevelDescriptionLight;
+    if (_protectionLevel < 70) return t.protectionLevelDescriptionBalanced;
+    if (_protectionLevel < 100) return t.protectionLevelDescriptionStrong;
+    return t.protectionLevelDescriptionMax;
+  }
+
+  Color _riskColor(PortraitRiskLevel level) {
+    switch (level) {
+      case PortraitRiskLevel.low:
+        return Colors.green;
+      case PortraitRiskLevel.medium:
+        return Colors.orange;
+      case PortraitRiskLevel.high:
+        return Colors.red;
+    }
+  }
+
+  String _riskLabel(PortraitRiskLevel level) {
+    final t = AppLocalizations.of(context);
+    switch (level) {
+      case PortraitRiskLevel.low:
+        return t.riskLevelLow;
+      case PortraitRiskLevel.medium:
+        return t.riskLevelMedium;
+      case PortraitRiskLevel.high:
+        return t.riskLevelHigh;
     }
   }
 }

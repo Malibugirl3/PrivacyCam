@@ -1,0 +1,66 @@
+{
+  "@@locale": "zh",
+  "settingsTitle": "设置",
+  "previewTitle": "预览",
+  "portraitRiskTitle": "人像风险",
+  "protectionStrength": "防护强度",
+  "startProtection": "开始防护",
+  "scanningPortraitRisk": "正在扫描人像风险…",
+  "retry": "重试",
+  "facesDetected": "检测到人脸：{count}",
+  "@facesDetected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recommendationPrefix": "建议：{text}",
+  "@recommendationPrefix": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "processingFailed": "处理失败",
+  "noRiskResult": "没有风险结果。",
+
+  "faceScanFailed": "人脸扫描失败：{error}",
+  "@faceScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "noClearFaceSummary": "未检测到清晰人脸。",
+  "detectedFacesSummary": "检测到{count}张人脸。",
+  "@detectedFacesSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "recommendationLow": "保持当前防护强度或在分享前稍微提高。",
+  "recommendationMedium": "在分享前使用中等或更高的扰动。",
+  "recommendationHigh": "使用高强度扰动并避免分享原图。",
+
+  "riskLevelLow": "低",
+  "riskLevelMedium": "中",
+  "riskLevelHigh": "高",
+
+  "protectionLevelDescriptionNone": "无扰动。",
+  "protectionLevelDescriptionLight": "轻微扰动，对画质影响较小。",
+  "protectionLevelDescriptionBalanced": "平衡画质与防护。",
+  "protectionLevelDescriptionStrong": "强防护，可能影响画质。",
+  "protectionLevelDescriptionMax": "最大防护。",
+
+  "languageTitle": "语言",
+  "languageSystem": "跟随系统",
+  "languageChinese": "中文",
+  "languageEnglish": "English"
+}

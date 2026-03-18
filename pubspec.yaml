@@ -30,6 +30,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 本地化
+  flutter_localizations:  
+    sdk: flutter
+  # Used by generated `AppLocalizations`.
+  intl: any
 
   cupertino_icons: ^1.0.8
   
@@ -50,6 +55,9 @@ dependencies:
   
   # 图片处理
   image: ^4.1.7
+
+  # On-device face detection
+  google_mlkit_face_detection: ^0.11.0
   
   # 权限管理
   permission_handler: ^11.3.0
@@ -87,6 +95,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/sounds/

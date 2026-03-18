@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -40,7 +41,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Text(AppLocalizations.of(context).settingsTitle),
         centerTitle: true,
       ),
       body: ListView(
@@ -53,6 +54,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           
           // 服务器配置（仅云端模式显示）
           if (useCloud) _buildServerSection(),
+          
+          const SizedBox(height: 24),
+          
+          // 语言选择
+          _buildLanguageSection(),
           
           const SizedBox(height: 24),
           
@@ -235,6 +241,53 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: const Text('PrivacyCam'),
               subtitle: const Text('朋友圈隐形衣 - 保护你的照片隐私'),
               contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建语言选择区域
+  Widget _buildLanguageSection() {
+    final t = AppLocalizations.of(context);
+    final language = ref.watch(settingsProvider).language;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.languageTitle,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<AppLanguage>(
+              segments: [
+                ButtonSegment(
+                  value: AppLanguage.system,
+                  label: Text(t.languageSystem),
+                  icon: const Icon(Icons.settings_suggest_outlined),
+                ),
+                ButtonSegment(
+                  value: AppLanguage.zh,
+                  label: Text(t.languageChinese),
+                  icon: const Icon(Icons.translate_outlined),
+                ),
+                ButtonSegment(
+                  value: AppLanguage.en,
+                  label: Text(t.languageEnglish),
+                  icon: const Icon(Icons.language_outlined),
+                ),
+              ],
+              selected: {language},
+              onSelectionChanged: (value) {
+                ref.read(settingsProvider.notifier).setLanguage(value.first);
+              },
             ),
           ],
         ),

@@ -1,0 +1,66 @@
+{
+  "@@locale": "en",
+  "settingsTitle": "Settings",
+  "previewTitle": "Preview",
+  "portraitRiskTitle": "Portrait Risk",
+  "protectionStrength": "Protection Strength",
+  "startProtection": "Start Protection",
+  "scanningPortraitRisk": "Scanning portrait risk…",
+  "retry": "Retry",
+  "facesDetected": "Faces detected: {count}",
+  "@facesDetected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recommendationPrefix": "Recommendation: {text}",
+  "@recommendationPrefix": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "processingFailed": "Processing failed",
+  "noRiskResult": "No risk result.",
+
+  "faceScanFailed": "Face scan failed: {error}",
+  "@faceScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "noClearFaceSummary": "No clear face detected in this image.",
+  "detectedFacesSummary": "Detected {count} face(s) in this image.",
+  "@detectedFacesSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "recommendationLow": "Keep current protection level or increase slightly before sharing.",
+  "recommendationMedium": "Use medium or higher perturbation before sharing.",
+  "recommendationHigh": "Use high perturbation and avoid sharing the original image.",
+
+  "riskLevelLow": "LOW",
+  "riskLevelMedium": "MEDIUM",
+  "riskLevelHigh": "HIGH",
+
+  "protectionLevelDescriptionNone": "No perturbation.",
+  "protectionLevelDescriptionLight": "Light perturbation, minor visual impact.",
+  "protectionLevelDescriptionBalanced": "Balanced quality and protection.",
+  "protectionLevelDescriptionStrong": "Strong protection, possible quality impact.",
+  "protectionLevelDescriptionMax": "Maximum protection.",
+
+  "languageTitle": "Language",
+  "languageSystem": "System",
+  "languageChinese": "Chinese",
+  "languageEnglish": "English"
+}

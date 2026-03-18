@@ -270,6 +270,11 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "6.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -320,6 +325,22 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "14.8.1"
+  google_mlkit_commons:
+    dependency: transitive
+    description:
+      name: google_mlkit_commons
+      sha256: "9990a65f407a3ef6bae646bf10143faa93fec126683771465bc6c0b43fb0e6e9"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.8.1"
+  google_mlkit_face_detection:
+    dependency: "direct main"
+    description:
+      name: google_mlkit_face_detection
+      sha256: "0aeab4f39204f7a235ed4cccedfe7e61401b43f4ef139a868c01fa29fdc225ab"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.11.1"
   hooks:
     dependency: transitive
     description:
@@ -416,6 +437,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.2.2"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.20.2"
   js:
     dependency: transitive
     description:
